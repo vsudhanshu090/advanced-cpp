@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>advanced-cpp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div id="brand" data-nav="home">
+      <span class="brand-mark">&lt;/&gt;</span>
+      <span class="brand-name">advanced-cpp</span>
+    </div>
+
+    <div id="difficulty-filter">
+      <div class="filter-label">Difficulty</div>
+      <div id="diff-chips"></div>
+    </div>
+
+    <div id="problem-list"></div>
+  </aside>
+
+  <main id="content">
+    <!-- Home / dashboard -->
+    <div id="home-view">
+      <div class="home-header">
+        <h1>Your Progress</h1>
+        <p class="home-sub">Keep the streak going.</p>
+      </div>
+
+      <div id="stat-cards"></div>
+
+      <div id="difficulty-breakdown">
+        <h2>By Difficulty</h2>
+        <div id="diff-bars"></div>
+      </div>
+    </div>
+
+    <!-- Problem detail view -->
+    <div id="problem-view" style="display:none;">
+      <header id="problem-header">
+        <button id="back-btn">&larr; Home</button>
+        <h2 id="problem-title"></h2>
+        <div id="problem-tags"></div>
+      </header>
+
+      <div id="problem-body">
+        <section id="statement-pane">
+          <div id="statement-md"></div>
+        </section>
+
+        <section id="editor-pane">
+          <div id="editor-toolbar">
+            <button id="run-btn">▶ Run Tests</button>
+            <span id="status-pill"></span>
+            <span id="attempts-pill"></span>
+          </div>
+          <textarea id="code-editor"></textarea>
+          <div id="results-panel"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>
