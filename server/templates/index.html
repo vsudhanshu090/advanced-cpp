@@ -4,33 +4,37 @@
 <meta charset="UTF-8">
 <title>advanced-cpp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
 </head>
 <body>
 <div id="app">
-  <aside id="sidebar">
+  <nav id="topbar">
     <div id="brand" data-nav="home">
       <span class="brand-mark">&lt;/&gt;</span>
       <span class="brand-name">advanced-cpp</span>
     </div>
-
-    <div id="difficulty-filter">
-      <div class="filter-label">Difficulty</div>
-      <div id="diff-chips"></div>
+    <div id="topbar-right">
+      <label class="toggle-row">
+        <input type="checkbox" id="assist-toggle" checked>
+        <span>Editor suggestions</span>
+      </label>
+      <label class="toggle-row">
+        <input type="checkbox" id="topics-toggle" checked>
+        <span>Show topic tags</span>
+      </label>
     </div>
-
-    <div id="problem-list"></div>
-  </aside>
+  </nav>
 
   <main id="content">
     <!-- Home / dashboard -->
     <div id="home-view">
+      <div class="home-container">
       <div class="home-header">
         <h1>Your Progress</h1>
         <p class="home-sub">Keep the streak going.</p>
@@ -41,6 +45,38 @@
       <div id="difficulty-breakdown">
         <h2>By Difficulty</h2>
         <div id="diff-bars"></div>
+      </div>
+
+      <div id="problems-section">
+        <div id="problems-toolbar">
+          <h2>Problems</h2>
+          <div id="toolbar-right">
+            <button id="random-btn">&#127922; Random Problem</button>
+          </div>
+        </div>
+        <details id="more-filters">
+          <summary id="more-filters-summary">
+            <span class="filter-icon">&#9881;&#65039;</span>
+            <span>Filters</span>
+            <span id="filters-count"></span>
+          </summary>
+          <div id="more-filters-content">
+            <div class="filter-row">
+              <span class="filter-row-label">Difficulty</span>
+              <div id="diff-chips"></div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-row-label">Type</span>
+              <div id="type-chips"></div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-row-label">Topic</span>
+              <div id="topic-chips"></div>
+            </div>
+          </div>
+        </details>
+        <div id="problem-grid"></div>
+      </div>
       </div>
     </div>
 
@@ -58,13 +94,30 @@
         </section>
 
         <section id="editor-pane">
-          <div id="editor-toolbar">
-            <button id="run-btn">▶ Run Tests</button>
-            <span id="status-pill"></span>
-            <span id="attempts-pill"></span>
+          <div id="pane-tabs">
+            <button class="pane-tab active" data-tab="editor">Editor</button>
+            <button class="pane-tab" data-tab="tests">Test Cases</button>
+            <button class="pane-tab" data-tab="results">Results <span id="results-badge"></span></button>
+            <div id="editor-toolbar-inline">
+              <button id="reset-btn" title="Discard changes and reload the stub">&#8634; Reset</button>
+              <button id="run-btn">&#9654; Run Tests <span class="kbd-hint">Ctrl+Enter</span></button>
+              <span id="save-indicator"></span>
+              <span id="status-pill"></span>
+              <span id="attempts-pill"></span>
+            </div>
           </div>
-          <textarea id="code-editor"></textarea>
-          <div id="results-panel"></div>
+
+          <div class="pane-content active" data-content="editor">
+            <div id="code-editor"></div>
+          </div>
+
+          <div class="pane-content" data-content="tests">
+            <div id="test-names-list"></div>
+          </div>
+
+          <div class="pane-content" data-content="results">
+            <div id="results-panel"></div>
+          </div>
         </section>
       </div>
     </div>

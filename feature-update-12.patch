@@ -1,0 +1,13 @@
+diff --git a/server/static/style.css b/server/static/style.css
+index d251474..dbb5b82 100644
+--- a/server/static/style.css
++++ b/server/static/style.css
+@@ -164,7 +164,7 @@ body {
+ }
+ #problems-toolbar h2 { margin: 0; }
+ 
+-#diff-chips { display: flex; flex-wrap: wrap; gap: 7px; }
++#diff-chips, #type-chips, #topic-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+ #toolbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+ #random-btn {
+   background: var(--panel);

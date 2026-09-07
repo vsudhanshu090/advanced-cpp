@@ -28,7 +28,7 @@ def run_judge(problem_dir: str) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         binary = os.path.join(tmp, "runner")
         compile_cmd = [
-            "g++", "-std=c++17", "-O0", "-g",
+            "g++", "-std=c++17", "-O0", "-g", "-pthread",
             "-Wall", "-Wextra",
             tests_cpp, "-o", binary
         ]
@@ -48,29 +48,14 @@ def run_judge(problem_dir: str) -> dict:
             return {"status": "timeout", "message": "Test run exceeded 15s (possible infinite loop or deadlock)"}
 
         output = run_proc.stdout + run_proc.stderr
-        return parse_doctest_output(output, proc.stderr)
+        return parse_doctest_output(output, proc.stderr, run_proc.returncode)
 
 
-def parse_doctest_output(output: str, compiler_warnings: str = "") -> dict:
-    total_match = re.search(r"\[doctest\]\s+test cases:\s+(\d+)", output)
-    failed_match = re.search(r"(\d+)\s+failed\s*\|\s*\d+\s+skipped", output)
-    assertions_match = re.search(
-        r"\[doctest\]\s+assertions:\s+(\d+)\s*\|\s*(\d+)\s+passed\s*\|\s*(\d+)\s+failed",
-        output
-    )
-
-    if not total_match:
-        return {"status": "unknown", "raw_output": output, "compiler_warnings": compiler_warnings}
-
-    total_cases = int(total_match.group(1))
-    failed_cases = int(failed_match.group(1)) if failed_match else 0
-    passed_cases = total_cases - failed_cases
-
-    total_a = passed_a = failed_a = 0
-    if assertions_match:
-        total_a, passed_a, failed_a = map(int, assertions_match.groups())
-
-    # Split output into per-test-case blocks for detail view
+def _extract_case_blocks(output: str) -> list:
+    """Splits doctest console output into per-TEST_CASE blocks with a
+    pass/fail guess based on whether an ERROR: line appears in that block.
+    Works on partial/truncated output too (e.g. from a crashed run) -
+    it just returns whatever complete blocks did get printed."""
     blocks = re.split(r"={10,}\n", output)
     cases = []
     for block in blocks:
@@ -84,6 +69,52 @@ def parse_doctest_output(output: str, compiler_warnings: str = "") -> dict:
             "passed": not has_error,
             "detail": block.strip()
         })
+    return cases
+
+
+def parse_doctest_output(output: str, compiler_warnings: str = "", returncode: int = 0) -> dict:
+    total_match = re.search(r"\[doctest\]\s+test cases:\s+(\d+)", output)
+    failed_match = re.search(r"(\d+)\s+failed\s*\|\s*\d+\s+skipped", output)
+    assertions_match = re.search(
+        r"\[doctest\]\s+assertions:\s+(\d+)\s*\|\s*(\d+)\s+passed\s*\|\s*(\d+)\s+failed",
+        output
+    )
+
+    if not total_match:
+        # No final summary line - either doctest never got to print it
+        # (the process crashed mid-run, e.g. a real double-free/segfault
+        # from genuinely unsafe code) or something else went wrong. Try to
+        # salvage whatever per-test-case output DID get printed before
+        # that happened, since a partial report is far more useful than a
+        # blank "unknown" - especially for RAII/memory-safety problems
+        # where an actual crash is a real, informative possible outcome.
+        partial_cases = _extract_case_blocks(output)
+        if returncode != 0:
+            return {
+                "status": "crashed",
+                "exit_code": returncode,
+                "message": (
+                    "The test program crashed before finishing (exit code "
+                    f"{returncode}) - likely a real memory-safety bug in "
+                    "your submission (e.g. a double-free, use-after-free, "
+                    "or segfault), not a judge malfunction."
+                ),
+                "cases": partial_cases,
+                "compiler_warnings": compiler_warnings,
+                "raw_output": output,
+            }
+        return {"status": "unknown", "raw_output": output, "compiler_warnings": compiler_warnings}
+
+    total_cases = int(total_match.group(1))
+    failed_cases = int(failed_match.group(1)) if failed_match else 0
+    passed_cases = total_cases - failed_cases
+
+    total_a = passed_a = failed_a = 0
+    if assertions_match:
+        total_a, passed_a, failed_a = map(int, assertions_match.groups())
+
+    # Split output into per-test-case blocks for detail view
+    cases = _extract_case_blocks(output)
 
     return {
         "status": "pass" if failed_cases == 0 else "fail",
@@ -110,6 +141,14 @@ def _print_cli_report(result: dict):
         print(result["compiler_output"])
     elif result["status"] == "timeout":
         print(" TIMEOUT:", result["message"])
+    elif result["status"] == "crashed":
+        print(f" PROCESS CRASHED (exit code {result['exit_code']})")
+        print(" " + result["message"])
+        if result.get("cases"):
+            print(f"\n {len(result['cases'])} test case(s) completed before the crash:")
+            for case in result["cases"]:
+                mark = "\u2705" if case["passed"] else "\u274c"
+                print(f"   {mark} {case['name']}")
     elif result["status"] in ("pass", "fail"):
         print(f" Assertions: {result['passed_assertions']}/{result['total_assertions']} passed")
         print(f" Test cases: {result['passed_cases']}/{result['total_cases']} passed")

@@ -34,10 +34,48 @@ Then open **http://localhost:5000**.
 
 ## Adding a new question
 
+**Fastest path:** use `docs/GENERATE_PROBLEM_PROMPT.md` — a self-contained
+prompt you can paste into *any* fresh Claude chat (no history needed) that
+knows the full schema, safety rules, and difficulty philosophy, and reads
+`docs/CURRICULUM.md` (paste its contents in where indicated) so new
+problems fill actual gaps instead of guessing or repeating what already
+exists. It asks for a plain script (not a git patch) that writes the new
+files directly, sidestepping patch-apply mismatches entirely. Update your
+local `docs/CURRICULUM.md` with what it gives back each time you use it.
+
+The rest of this section explains the same conventions in short form, for
+reference or if you're doing it ad-hoc in this same chat:
+
 Ask Claude (in chat) for one with a spec — you don't need to specify a
 level; problems can mix concepts from anywhere in your curriculum. Give:
-- a **difficulty** (one of: `easy`, `easy-medium`, `medium`, `hard`, `expert`)
+- a **difficulty** (one of: `basic`, `easy`, `easy-medium`, `medium`, `hard`, `expert`)
+- optionally, a **type** (see below) — or leave it to Claude to pick one
+  that fits the concept
 - optionally, topics you want covered (or leave it to Claude to pick a mix)
+
+### Question types
+
+Not every problem has to be "fill in the stubbed class." Five types exist:
+
+- **implement** — the classic shape: interface + stub given, fill in the
+  logic. Best for basic/easy, isolating "can you get the logic right"
+  without also testing design instinct.
+- **from-scratch** — no class skeleton at all. Only a prose spec + minimal
+  required interface; you design the whole class yourself.
+- **debug** — `solution.h` ships a *complete*, plausible implementation
+  with an intentional bug. Find and fix it.
+- **refactor** — working-but-unsafe code (raw pointers, no Rule of Five)
+  that you modernize to be safe, without changing its public interface.
+- **performance** — correctness tests plus a wall-clock budget that a
+  brute-force approach can't meet, forcing an efficient design.
+
+Each problem folder has a `levels/<difficulty>/<name>/` example of every
+type already in this repo — read one before generating a new one of the
+same type, since they each have specific safe-testing conventions (e.g.
+`debug`/`refactor` problems test copy/move independence using
+heap-allocated-and-never-deleted objects to avoid a real double-free
+crashing the grader — see the comments in
+`levels/medium/dynamic_array_bug/tests.cpp` for the pattern).
 
 Claude hands you three files:
 - `problem.md` — statement, with frontmatter:
@@ -46,10 +84,16 @@ Claude hands you three files:
   title: ...
   topics: [Smart Pointers, RAII]
   difficulty: easy
+  type: implement
   ---
   ```
-- `solution.h` — a stub with `// TODO`s for you to fill in
-- `tests.cpp` — the hidden test suite (don't edit — it's the answer key)
+- `solution.h` — for `implement`, a stub with `// TODO`s; for
+  `from-scratch`, nearly blank; for `debug`/`refactor`, a complete
+  (buggy/unsafe) implementation
+- `tests.cpp` — the hidden test suite (don't edit — it's the answer key).
+  Must `#include "../../../framework/test_common.h"` (adjusting `../../..`
+  for folder depth), **not** `doctest.h` directly — see the note below on
+  why.
 
 Drop all three into a new folder anywhere under `levels/`, e.g.:
 ```
@@ -92,6 +136,17 @@ advanced-cpp/
         ├── solution.h
         └── tests.cpp
 ```
+
+## Windows note: name collisions with windows.h
+
+On Windows, doctest pulls in `<windows.h>` for its timer, which declares
+GDI functions named `Rectangle`, `Arc`, `Polygon`, `Ellipse`, and others as
+plain WinAPI symbols. If a problem's class happens to share one of these
+names, you'll get a confusing compile error (e.g. "cannot convert 'double'
+to 'HDC'"). `framework/test_common.h` defines `NOGDI` (and related macros)
+before pulling in `doctest.h`, which excludes that section of windows.h
+entirely — this is why every `tests.cpp` includes `test_common.h` instead
+of `doctest.h` directly.
 
 ## Known limitation: concurrency problems
 

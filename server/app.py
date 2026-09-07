@@ -25,7 +25,8 @@ ENGINE_DIR = os.path.join(REPO_ROOT, "engine")
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 PROGRESS_FILE = os.path.join(DATA_DIR, "progress.json")
 
-DIFFICULTIES = ["easy", "easy-medium", "medium", "hard", "expert"]
+DIFFICULTIES = ["basic", "easy", "easy-medium", "medium", "hard", "expert"]
+QUESTION_TYPES = ["implement", "from-scratch", "debug", "refactor", "performance"]
 
 sys.path.insert(0, ENGINE_DIR)
 from judge import run_judge  # noqa: E402
@@ -78,7 +79,7 @@ def parse_frontmatter(problem_md_path):
     """Parses the --- key: value --- header block at the top of problem.md."""
     with open(problem_md_path, "r", encoding="utf-8") as f:
         content = f.read()
-    meta = {"title": "Untitled", "topics": [], "difficulty": "medium"}
+    meta = {"title": "Untitled", "topics": [], "difficulty": "medium", "type": "implement"}
     body = content
     m = re.match(r"^---\n(.*?)\n---\n(.*)$", content, re.DOTALL)
     if m:
@@ -96,6 +97,8 @@ def parse_frontmatter(problem_md_path):
                 meta[key] = val
     if meta.get("difficulty") not in DIFFICULTIES:
         meta["difficulty"] = "medium"
+    if meta.get("type") not in QUESTION_TYPES:
+        meta["type"] = "implement"
     return meta, body.strip()
 
 
@@ -115,12 +118,24 @@ def find_problems():
                 "title": meta.get("title", rel_path),
                 "topics": meta.get("topics", []),
                 "difficulty": meta.get("difficulty", "medium"),
+                "type": meta.get("type", "implement"),
                 "solved": entry.get("solved", False),
                 "attempts": entry.get("attempts", 0),
             })
     diff_rank = {d: i for i, d in enumerate(DIFFICULTIES)}
     problems.sort(key=lambda p: (diff_rank.get(p["difficulty"], 2), p["title"]))
     return problems
+
+
+def extract_test_names(tests_cpp_path):
+    """Pulls TEST_CASE("...") names out of the hidden test file, so the UI
+    can show what will be tested without revealing expected values."""
+    try:
+        with open(tests_cpp_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return []
+    return re.findall(r'TEST_CASE\(\s*"([^"]+)"\s*\)', content)
 
 
 def resolve_problem_dir(problem_id):
@@ -157,11 +172,31 @@ def api_stats():
             "total": len(subset),
             "solved": sum(1 for p in subset if p["solved"]),
         }
+
+    total_attempts = sum(p["attempts"] for p in problems)
+    solved_problems = [p for p in problems if p["solved"]]
+    avg_attempts = (
+        round(sum(p["attempts"] for p in solved_problems) / len(solved_problems), 1)
+        if solved_problems else 0
+    )
+
+    all_topics = set()
+    solved_topics = set()
+    for p in problems:
+        for t in p.get("topics", []):
+            all_topics.add(t)
+            if p["solved"]:
+                solved_topics.add(t)
+
     return jsonify({
         "total": total,
         "solved": solved,
         "percent": round((solved / total) * 100) if total else 0,
         "by_difficulty": by_difficulty,
+        "total_attempts": total_attempts,
+        "avg_attempts": avg_attempts,
+        "topics_total": len(all_topics),
+        "topics_practiced": len(solved_topics),
     })
 
 
@@ -174,7 +209,11 @@ def api_problem_detail(problem_id):
     with open(os.path.join(pdir, "solution.h"), "r", encoding="utf-8") as f:
         solution = f.read()
     progress = load_progress().get(problem_id, {})
-    return jsonify({"meta": meta, "problem_md": body, "solution": solution, "progress": progress})
+    test_names = extract_test_names(os.path.join(pdir, "tests.cpp"))
+    return jsonify({
+        "meta": meta, "problem_md": body, "solution": solution,
+        "progress": progress, "test_names": test_names,
+    })
 
 
 @app.route("/api/problem/<path:problem_id>/solution", methods=["POST"])
