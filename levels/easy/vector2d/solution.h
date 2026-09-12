@@ -5,48 +5,38 @@
 
 class Vector2D {
 public:
-    Vector2D(double x, double y) {
-        // TODO
-    }
+    Vector2D(double x, double y) : x_(x), y_(y) {}
 
     double x() const {
-        // TODO
-        return 0.0;
+        return this->x_;
     }
 
     double y() const {
-        // TODO
-        return 0.0;
+        return this->y_;
     }
 
     Vector2D operator+(const Vector2D& other) const {
-        // TODO
-        return Vector2D(0.0, 0.0);
+        return Vector2D(x_ + other.x_, y_ + other.y_);
     }
 
     Vector2D operator-(const Vector2D& other) const {
-        // TODO
-        return Vector2D(0.0, 0.0);
+        return Vector2D(x_ - other.x_, y_ - other.y_);
     }
 
     Vector2D operator*(double scalar) const {
-        // TODO
-        return Vector2D(0.0, 0.0);
+        return Vector2D(x_ * scalar, y_ * scalar);
     }
 
     double dot(const Vector2D& other) const {
-        // TODO
-        return 0.0;
+        return x_ * other.x_ + y_ * other.y_;
     }
 
     double magnitude() const {
-        // TODO
-        return 0.0;
+        return sqrt(x_ * x_ + y_ * y_);
     }
 
     bool operator==(const Vector2D& other) const {
-        // TODO
-        return false;
+        return (x_ == other.x_ && y_ == other.y_);
     }
 
 private:

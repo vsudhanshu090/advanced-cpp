@@ -34,14 +34,15 @@ Then open **http://localhost:5000**.
 
 ## Adding a new question
 
-**Fastest path:** use `docs/GENERATE_PROBLEM_PROMPT.md` — a self-contained
-prompt you can paste into *any* fresh Claude chat (no history needed) that
-knows the full schema, safety rules, and difficulty philosophy, and reads
-`docs/CURRICULUM.md` (paste its contents in where indicated) so new
-problems fill actual gaps instead of guessing or repeating what already
-exists. It asks for a plain script (not a git patch) that writes the new
-files directly, sidestepping patch-apply mismatches entirely. Update your
-local `docs/CURRICULUM.md` with what it gives back each time you use it.
+**Fastest path:** use `docs/MASTER_PROMPT.md` — one self-contained file
+you paste into *any* fresh Claude chat (no history needed). It contains
+the full 20-level syllabus, a coverage tracker of exactly what's been
+generated so far, the schema/safety rules, and the pedagogical rule that
+the mechanism being taught is never pre-declared for you (e.g. an
+operator-overloading lesson never shows you the `operator==` signature —
+you have to know to write it). It generates the next topic in strict
+syllabus order and hands back an updated copy of the whole file — replace
+your local copy with that one so the next paste stays accurate.
 
 The rest of this section explains the same conventions in short form, for
 reference or if you're doing it ad-hoc in this same chat:

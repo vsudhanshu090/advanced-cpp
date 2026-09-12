@@ -9,16 +9,19 @@ class DynamicArray {
 public:
     explicit DynamicArray(size_t size) : size_(size), data_(new int[size]{}) {}
 
-    DynamicArray(const DynamicArray& other)
-        : size_(other.size_), data_(other.data_) {
-        // BUG: this just copies the pointer - both objects now point at
-        // the same underlying buffer instead of each owning their own.
+    DynamicArray(const DynamicArray& other) : size_(other.size_) {
+        int* data = new int[size_]{};
+        for (int i{};i<size_;i++)
+            *(data+i) = *(other.data_ + i);
+        data_ = data;
     }
 
     DynamicArray& operator=(const DynamicArray& other) {
         size_ = other.size_;
-        data_ = other.data_;
-        // BUG: same issue as the copy constructor above.
+        int* data = new int[size_]{};
+        for (int i{};i<size_;i++)
+            *(data+i) = *(other.data_ + i);
+        data_ = data;
         return *this;
     }
 
