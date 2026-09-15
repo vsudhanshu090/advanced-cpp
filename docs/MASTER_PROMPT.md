@@ -101,6 +101,23 @@ one isolated concept, not "fully scaffolded."
    type with no default constructor, to catch overly-rigid solutions.
 6. Judge compile flags already include `-pthread` — concurrency problems
    need nothing extra for that.
+7. Every `tests.cpp` must exercise the full scenario space implied by the
+   problem's contract, not just one or two happy-path checks. At minimum,
+   explicitly cover: the ordinary/typical case; every boundary the contract
+   implies (zero, empty/single-element collections, first/last position,
+   the type's min/max, negative values, exact equality at a threshold);
+   and — critically — at least one case chosen specifically to catch a
+   *plausible* wrong implementation, i.e. the near-miss a learner would
+   actually write if they half-understood the lesson (off-by-one instead of
+   exact, value instead of reference, missing a null/zero guard, wrong
+   operand order in a short-circuit condition, etc.), not just whatever
+   happens to break the shipped stub. Before delivering, in addition to
+   verifying the stub fails and the correct reference passes 100% (rule 4
+   above), write one or two of these plausible-wrong implementations
+   separately, compile and run each against the real `tests.cpp`, and
+   confirm the suite actually catches them. Report which near-miss
+   implementations were tried and that each was caught, alongside the
+   stub/correct-reference pass counts.
 
 ## Generation order: STRICT top-to-bottom
 
@@ -146,17 +163,42 @@ covered thoroughly enough by the problem(s) generated for it. A level
 with 10 numbered topics will likely take several iterations to fully
 clear — that's expected. Continue from wherever the tracker leaves off.
 
+## A note on topics that can't be fully tested in a single translation unit
+
+The judge compiles one `tests.cpp` (which includes `solution.h`) as a single
+translation unit. Some Level 1/Topic 1-style concepts — true cross-TU ODR
+violations, linker-level multiple-definition errors, static vs. extern
+linkage observed across separately-compiled files — can't be faithfully
+reproduced under that model without adding extra files the repo convention
+doesn't support. When a concept has this limitation, prefer the closest
+single-TU-faithful demonstration (e.g. a double-`#include` within one TU for
+include-guard problems; a real header/definition split simulated by giving
+`tests.cpp` the "other translation unit" role for forward-declaration
+problems) rather than skipping the concept or asserting something the
+compile model can't actually prove.
+
 ## Output format
 
-1. A single bash script (works in Git Bash on Windows) using heredocs
-   that creates each new problem folder and writes all three files
-   directly. NOT a git patch — a fresh session's file contents may not
-   match the real repo's baseline, and a diff can fail to apply for
-   reasons unrelated to the new content; a script that writes files
-   directly has no such failure mode.
-2. This ENTIRE file, returned in full, with the Coverage Tracker section
-   updated (newly-covered topics checked off). Paste that back in next
-   time, replacing this file.
+1. A single git-style unified diff patch (`diff --git a/... b/...`, new file
+   mode, full content as added lines) that adds each new problem folder —
+   apply with `git apply <file>.patch` from the repo root, or plain
+   `patch -p1 < <file>.patch` if not using git. Every problem folder
+   generated is brand new (never an edit to an existing file), so the
+   older baseline-mismatch concern that ruled out patches doesn't apply
+   here — a patch that only adds new files has nothing to conflict with.
+   The one exception is this file itself (`docs/MASTER_PROMPT.md`), which
+   the same patch also updates in place — include that hunk too, diffed
+   against the exact content given in this paste. Verify the whole patch
+   actually applies cleanly (`git apply --check`) against a plausible
+   fresh checkout — i.e. one that has `levels/`, `framework/test_common.h`,
+   and this file at exactly its current content, but not yet the new
+   problem folders — before delivering it. If a patch ever fails that
+   check for some reason, fall back to a bash script (heredocs, works in
+   Git Bash on Windows) that writes the files directly instead, and say so.
+2. This ENTIRE file is updated (Coverage Tracker checkboxes, and this
+   Output format section as needed) via that same patch — no separate
+   file. Whatever `docs/MASTER_PROMPT.md` looks like after applying the
+   patch is what gets pasted back in next time.
 
 ---
 
@@ -174,11 +216,102 @@ problem). They remain in the repo as bonus practice but are **not**
 counted against this tracker, since they predate the syllabus below.
 Start fresh at Level 1, Topic 1.
 
-### Level 1: C++ Fundamentals Refresher — NOT STARTED
-- [ ] 1. Compilation model (translation units, headers vs source)
-- [ ] 2. Variables, types, type sizes, integer overflow, implicit conversions
-- [ ] 3. Control flow (if/switch/loops) edge cases
-- [ ] 4. Functions: pass-by-value / pass-by-reference / pass-by-pointer
+### Level 1: C++ Fundamentals Refresher — IN PROGRESS
+- [x] 1. Compilation model (translation units, headers vs source) — covered by
+      2 problems: `levels/basic/header-include-guards` (basic, debug — fix a
+      header missing include guards, exposed by `tests.cpp` deliberately
+      `#include`-ing it twice in the same translation unit) and
+      `levels/easy/forward-declared-holder` (easy, from-scratch — write a
+      `NodeHolder` class around a forward-declared, never-defined-in-the-header
+      `Node` type, with `tests.cpp` playing the role of the translation unit
+      that has the full `Node` definition). Both verified: the starting
+      `solution.h` fails to compile against `tests.cpp` as shipped, and a
+      correct hand-written reference implementation passes 100% (3/3 test
+      cases, 5/5 assertions; and 5/5 test cases, 13/13 assertions, respectively).
+- [x] 2. Variables, types, type sizes, integer overflow, implicit conversions —
+      covered by 5 problems spanning basic to medium:
+      `levels/basic/int-range-check` (basic, implement — check whether a
+      `long long` fits in `int` using `std::numeric_limits`),
+      `levels/easy/unsigned-reverse-sum` (easy, implement — sum a vector in
+      reverse with an unsigned index without underflowing past zero),
+      `levels/easy/silent-narrowing-bug` (easy, debug — fix a function that
+      relies on truncating narrowing conversion instead of clamping),
+      `levels/easy-medium/mixed-sign-comparison` (easy-medium, implement —
+      correctly compare a signed and unsigned value without falling into the
+      implicit-conversion trap where a negative value becomes huge), and
+      `levels/medium/multiply-overflow-check` (medium, implement — detect
+      `int` multiplication overflow by promoting to `long long` first, never
+      triggering the signed-overflow UB the problem is about). All verified:
+      each starting `solution.h` fails against `tests.cpp` as shipped (four by
+      compile error, one — silent-narrowing-bug — by failing test assertions
+      since it's a debug problem with a logic bug rather than a missing
+      declaration), and a correct hand-written reference implementation passes
+      100% for all five (4/4 tests, 9/9 assertions; 5/5 tests, 5/5 assertions;
+      4/4 tests, 11/11 assertions; 4/4 tests, 10/10 assertions; and 5/5 tests,
+      13/13 assertions, respectively). For `unsigned-reverse-sum`, also
+      confirmed the classic naive-wraparound wrong answer fails fast via a
+      clean segfault rather than hanging; for `multiply-overflow-check`, also
+      confirmed under UndefinedBehaviorSanitizer that the naive direct-`int`
+      multiplication this problem steers learners away from is genuinely UB
+      (and crashes on the `INT_MIN * -1` case), confirming the lesson is real
+      and not just stylistic.
+- [x] 3. Control flow (if/switch/loops) edge cases — covered by 5 problems
+      spanning basic to medium: `levels/basic/switch-fallthrough-bug` (basic,
+      debug — fix a `switch` missing `break`s that causes every case to
+      cascade all the way to `default`), `levels/easy/inclusive-range-sum`
+      (easy, implement — sum an inclusive `[lo, hi]` range without the classic
+      `<` vs `<=` off-by-one, and without mishandling a backwards range),
+      `levels/easy/collatz-at-least-once` (easy, implement — a
+      do/while-shaped problem where checking the stop condition before the
+      first step, instead of after, silently undercounts the `n == 1` case),
+      `levels/easy-medium/short-circuit-guard` (easy-medium, implement — guard
+      an unsafe division with `&&` short-circuit evaluation, where getting the
+      operand order backwards causes a real crash instead of just a wrong
+      answer), and `levels/medium/off-by-one-binary-search` (medium, debug —
+      fix a hand-rolled binary search whose `low < high` loop condition (should
+      be `low <= high`) causes it to silently skip checking the final
+      candidate whenever the search narrows to a single remaining element).
+      All verified: each starting `solution.h` fails against `tests.cpp` as
+      shipped (three by compile error since the function is entirely absent;
+      two — switch-fallthrough-bug and off-by-one-binary-search — by failing
+      test assertions since they're debug problems with logic bugs rather than
+      missing declarations), and a correct hand-written reference
+      implementation passes 100% for all five (3/3 tests, 10/10 assertions;
+      5/5 tests, 9/9 assertions; 4/4 tests, 5/5 assertions; 4/4 tests, 9/9
+      assertions; and 7/7 tests, 16/16 assertions, respectively). For
+      short-circuit-guard, also confirmed the operand-order-reversed wrong
+      answer crashes fast via a clean SIGFPE rather than hanging; for
+      off-by-one-binary-search, confirmed the buggy version reliably fails
+      (never hangs) and actually misses more cases than just the "single
+      candidate" scenario described in problem.md, which was corrected to say
+      so.
+- [x] 4. Functions: pass-by-value / pass-by-reference / pass-by-pointer —
+      covered by 5 problems spanning basic to medium: `levels/basic/swap-by-reference`
+      (basic, implement — swap two ints via reference parameters),
+      `levels/basic/value-trap` (basic, debug — fix a function meant to
+      double the caller's variable but takes it by value, so the mutation
+      never propagates back), `levels/easy/pointer-increment` (easy,
+      implement — increment through an `int*`, safely doing nothing on
+      `nullptr` instead of crashing), `levels/easy-medium/const-ref-no-copy`
+      (easy-medium, implement — sum a vector of a copy-instrumented type
+      without triggering a single copy, via the parameter *and* the loop
+      variable), and `levels/medium/divmod-combined` (medium, implement — a
+      `divmod` function combining all three passing styles at once: plain
+      values for the operands, a reference out-parameter for the remainder,
+      and an optional pointer out-parameter for a success flag that callers
+      may validly leave as `nullptr`). All verified: each starting
+      `solution.h` fails against `tests.cpp` as shipped (three by compile
+      error since the function is entirely absent; value-trap by failing test
+      assertions since it's a debug problem with a logic bug rather than a
+      missing declaration), and a correct hand-written reference
+      implementation passes 100% for all five (4/4 tests, 8/8 assertions;
+      4/4 tests, 4/4 assertions; 4/4 tests, 4/4 assertions; 4/4 tests, 9/9
+      assertions; and 6/6 tests, 16/16 assertions, respectively). For
+      pointer-increment and the nullptr-flag path of divmod-combined, also
+      confirmed the no-null-check wrong answer crashes fast and cleanly
+      (SIGSEGV) rather than hanging; for const-ref-no-copy, confirmed the
+      test catches a copy from the parameter, a copy from the loop variable,
+      and a partial fix that only corrects one of the two, independently.
 - [ ] 5. Default arguments, function overloading, overload resolution
 - [ ] 6. Arrays vs C-strings vs std::string basics
 - [ ] 7. const correctness (basic level)
@@ -398,6 +531,8 @@ order-book system. Revisit once Levels 1–19 are substantially covered.)
 
 Generate as many problems as you judge necessary for the first unchecked
 topic above (see "How many problems per topic" — no fixed count), in
-strict top-to-bottom order (should be Level 1, Topic 1 on the very first
-run). Assign each problem's difficulty on its own merits, independent of
-the level number. Then return the updated version of this whole file.
+strict top-to-bottom order (should be Level 1, Topic 5 on the very first
+run after this paste). Assign each problem's difficulty on its own merits,
+independent of the level number. Then return a single patch, as described
+in "Output format" above, that both adds the new problem folders and
+updates this file in place.
